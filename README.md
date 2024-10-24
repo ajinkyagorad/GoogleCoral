@@ -60,6 +60,8 @@ python examples/semantic_seg.py --model test_data/deeplabv3_mnv2_pascal_quant_ed
 **Output**:
 This will output a segmented version of the image highlighting distinct features such as roads, cars, etc.
 
+![Segmented Output](imgs/cityscapes.png)
+
 ### 🎧 Real-Time Audio Classification: `real_time_audio_classification.py`
 
 This script uses YAMNet for real-time audio classification via Coral TPU. It can take live input from a microphone or classify from an audio file.
