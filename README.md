@@ -32,7 +32,7 @@ The repository structure is as follows:
 2. **Create and activate a conda environment**:
 
    ```bash
-   conda create --name pycoral_env python=3.8
+   conda create --name pycoral_env python=3.9
    conda activate pycoral_env
    ```
 
