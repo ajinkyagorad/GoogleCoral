@@ -62,6 +62,25 @@ This will output a segmented version of the image highlighting distinct features
 
 ![Segmented Output](imgs/cityscapes.png)
 
+```plaintext
+Inference time: 0.118 seconds
+Inference time: 0.107 seconds
+Inference time: 0.089 seconds
+Inference time: 0.087 seconds
+Inference time: 0.106 seconds
+Inference time: 0.105 seconds
+Inference time: 0.110 seconds
+Inference time: 0.086 seconds
+Inference time: 0.086 seconds
+Inference time: 0.094 seconds
+Inference time: 0.147 seconds
+Inference time: 0.114 seconds
+Inference time: 0.100 seconds
+Inference time: 0.120 seconds
+Inference time: 0.098 seconds
+Inference time: 0.140 seconds
+```
+
 ### 🎧 Real-Time Audio Classification: `real_time_audio_classification.py`
 
 This script uses YAMNet for real-time audio classification via Coral TPU. It can take live input from a microphone or classify from an audio file.
