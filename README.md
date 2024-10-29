@@ -2,8 +2,7 @@
 
 ## 🌱 Overview
 
-Welcome to the GoogleCoral examples repository! This repository contains scripts that utilize the Coral Edge TPU for real-time audio classification and semantic segmentation.
-The repository structure is as follows:
+Welcome to the GoogleCoral examples repository! This repository contains scripts that utilize the Coral Edge TPU for real-time audio classification, semantic segmentation, and AR dashboards. The repository structure is as follows:
 
 ```
 .
@@ -11,6 +10,9 @@ The repository structure is as follows:
 │   ├── classifyspectrum_audio.py
 │   ├── classify_audio.py
 │   ├── real_time_audio_classification.py
+│   ├── audio_yamnet_disp.py
+│   ├── coral_segmentation_AR_pyqt_dashboard_transparent.py
+│   ├── coral_segmentation_AR_pyqt_dashboard.py
 │   └── semantic_seg.py
 └── test_data
     ├── deeplab_mobilenet_edgetpu_slim_cityscapes_quant_edgetpu.tflite
@@ -42,7 +44,7 @@ The repository structure is as follows:
    pip install -r requirements.txt
    ```
 
-4. **Coral USB Accelerator Setup**
+4. **Coral USB Accelerator Setup**:
    Refer to the official Coral documentation for setting up your Coral USB Accelerator: [Coral Documentation](https://coral.ai/docs/accelerator/get-started/)
 
 ## 🔗 Scripts in This Repository
@@ -62,25 +64,6 @@ This will output a segmented version of the image highlighting distinct features
 
 ![Segmented Output](imgs/cityscapes.png)
 
-```plaintext
-Inference time: 0.118 seconds
-Inference time: 0.107 seconds
-Inference time: 0.089 seconds
-Inference time: 0.087 seconds
-Inference time: 0.106 seconds
-Inference time: 0.105 seconds
-Inference time: 0.110 seconds
-Inference time: 0.086 seconds
-Inference time: 0.086 seconds
-Inference time: 0.094 seconds
-Inference time: 0.147 seconds
-Inference time: 0.114 seconds
-Inference time: 0.100 seconds
-Inference time: 0.120 seconds
-Inference time: 0.098 seconds
-Inference time: 0.140 seconds
-```
-
 ### 🎧 Real-Time Audio Classification: `real_time_audio_classification.py`
 
 This script uses YAMNet for real-time audio classification via Coral TPU. It can take live input from a microphone or classify from an audio file.
@@ -91,7 +74,7 @@ This script uses YAMNet for real-time audio classification via Coral TPU. It can
 python examples/real_time_audio_classification.py --model test_data/yamnet_edgetpu.tflite --audio 0 --labels test_data/yamnet_class_map.csv
 ```
 
-- **Input ****`--audio`**: The `--audio` parameter takes either the path to an audio file or `0` for live microphone input.
+- **Input `--audio`**: The `--audio` parameter takes either the path to an audio file or `0` for live microphone input.
 - `--audio 0`: Uses the first microphone channel as input for real-time classification.
 
 **Output**:
@@ -115,6 +98,84 @@ Class: Whispering               , Confidence: 0.016
 Class: Clicking                 , Confidence: 0.008
 Inference time: 0.000 seconds
 ```
+
+### 🎵 Real-Time Audio Visualization: `audio_yamnet_disp.py`
+
+This script provides real-time audio classification while also showing an overlay visualization of the classification results. It can be used for visual monitoring of real-time sound classes.
+
+**Command to Run with Computer Audio**:
+
+```bash
+python examples/audio_yamnet_disp.py --model test_data/yamnet_edgetpu.tflite --audio computer --labels test_data/yamnet_class_map.csv
+```
+
+- **Input `--audio computer`**: This option allows you to classify real-time audio from your computer's system output (e.g., "Stereo Mix").
+  
+- **Transparent Overlay**: The script uses a frameless and transparent window overlay to display the real-time classification, perfect for monitoring while using other applications.
+
+**Command to Run with Microphone**:
+
+```bash
+python examples/audio_yamnet_disp.py --model test_data/yamnet_edgetpu.tflite --audio 0 --labels test_data/yamnet_class_map.csv
+```
+
+**Example Usage**:
+
+- **System Audio Monitoring**: Use the `--audio computer` option to visualize the current system sound classes, which is useful during music playback or video conferencing.
+
+### 🌈 AR Dashboard Viewer: `coral_segmentation_AR_pyqt_dashboard.py` & `coral_segmentation_AR_pyqt_dashboard_transparent.py`
+
+These scripts provide an AR dashboard using Coral Edge TPU for real-time segmentation and a webcam feed. One version (`_transparent`) is designed for augmented reality with transparent areas, while the other version is intended for direct AR viewing.
+
+#### Overview
+
+The AR Dashboard Viewer code is a custom Python script designed for creating an Augmented Reality (AR) dashboard for AR glasses. Here's a brief overview of the main features:
+
+- **AR Dashboard with Transparency**: 
+  - The application window is frameless, stays on top, and has a fully transparent background. This allows the display to act as an overlay when used with AR glasses, where black areas become transparent.
+  - It uses PyQt5 to create a UI that is visible but allows mouse events to pass through, giving it non-interactive behavior for the underlying application.
+
+- **Edge TPU Integration**:
+  - It integrates Google’s Edge TPU for semantic segmentation. The `make_interpreter` function initializes the model, and the segmentation output is processed and displayed as an overlay in the dashboard.
+  - A real-time segmentation is performed using a webcam feed, making it suitable for applications like live object detection or environmental scanning.
+
+- **Live Camera Feed and Visual Elements**:
+  - The camera feed from a connected webcam is captured, processed, and displayed on the dashboard.
+  - Several additional visual elements are drawn, including:
+    - Weather conditions, engine status, crew information.
+    - A radar chart displaying ship positions.
+    - An "emotional topology map" and other abstract visualizations.
+    - A line graph showing dynamically generated data.
+
+- **Real-Time Updates**:
+  - The dashboard refreshes periodically using a `QTimer` (`UPDATE_INTERVAL_MS = 100`), which updates the visuals and data to reflect changes in real time, simulating an immersive live dashboard.
+
+- **Click-Through Interaction**:
+  - On Windows, the `make_window_click_through` function is used to ensure that mouse input goes through the widget, making the UI non-intrusive and suitable for AR overlays.
+
+- **Components and Layout**:
+  - The visualizations are carefully arranged with margins to avoid clutter and provide clear AR information.
+  - The drawing routines (`paintEvent`) use `QPainter` to handle graphics rendering efficiently.
+
+**Command to Run Transparent AR Dashboard**:
+
+```bash
+python examples/coral_segmentation_AR_pyqt_dashboard_transparent.py
+```
+
+**Visual Representation**:
+
+![Transparent AR Dashboard](imgs/dashboard_transparent_1.png)
+
+**Command to Run AR Dashboard with Opaque Background**:
+
+```bash
+python examples/coral_segmentation_AR_pyqt_dashboard.py
+```
+
+**Example Usage**:
+
+- **AR Heads-Up Display (HUD)**: Use `coral_segmentation_AR_pyqt_dashboard_transparent.py` to create an AR overlay for glasses, which can be used for navigation aids, operational dashboards, or smart monitoring.
 
 ## 🚧 Troubleshooting & Common Errors
 
@@ -176,4 +237,3 @@ Ajinkya Gorad - [GitHub](https://github.com/ajinkyagorad)
 - **Console Output Overwriting**: Current script logic replaces only the classification output but keeps a running history above. This behavior ensures visibility of older classification outputs.
 
 Happy coding! 🚀🌟
-
