@@ -10,6 +10,16 @@ from pycoral.adapters import common
 import sys
 import signal
 
+# User-configurable parameters
+PLACEMENT_RIGHT_OFFSET = 10  # Horizontal position of the widget
+PLACEMENT_BOTTOM_OFFSET = 10  # Vertical position of the widget
+TOTAL_WIDTH = 1000  # Width of the overlay widget
+TOTAL_HEIGHT = 300  # Height of the overlay widget
+BAR_OPACITY = .5  # Opacity of the bars in the widget
+BAR_COLOR = "155,255,105"  # Color of the bars in the widget (e.g., "100,200,255")
+BAR_WIDTH = 5
+BAR_SPACING =2
+
 class RealTimeClassifier(QtCore.QObject):
     update_signal = QtCore.pyqtSignal(np.ndarray)  # Signal to send confidences to the widget
 
@@ -34,9 +44,7 @@ class RealTimeClassifier(QtCore.QObject):
             print("Interpreter initialized successfully.")  # Debug statement
         except Exception as e:
             print(f"Error initializing interpreter: {e}")  # Debug statement
-        finally:
-            #Reset if possible
-            interpreter = None
+
         # Set input tensor
         input_details = self.interpreter.get_input_details()[0]
         self.input_shape = input_details['shape']
@@ -44,6 +52,7 @@ class RealTimeClassifier(QtCore.QObject):
 
         # Buffer for storing samples for classification
         self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
+        self.stop_event = threading.Event()  # Event to stop the audio thread
 
     def audio_callback(self, indata, frames, time_info, status):
         if status:
@@ -91,25 +100,44 @@ class RealTimeClassifier(QtCore.QObject):
             except Exception as e:
                 print(f"Error during inference: {e}")  # Debug statement
 
-    def classify_from_mic(self, device_index=1):
-        print("Starting classification from microphone...")  # Debug statement
-        self.audio_thread = threading.Thread(target=self._start_streaming, args=(device_index,), daemon=True)
+    def classify_from_computer_audio(self):
+        print("Starting classification from computer audio...")  # Debug statement
+        self.audio_thread = threading.Thread(target=self._start_streaming, daemon=True)
         self.audio_thread.start()
 
-    def _start_streaming(self, device_index):
+    def _start_streaming(self):
         print("Starting audio stream...")  # Debug statement
+
+        # Query available devices and display them
+        devices = sd.query_devices()
+        print("Listing all available audio devices:")
+        for idx, device in enumerate(devices):
+            print(f"Device {idx}: {device['name']}, max input channels: {device['max_input_channels']}")
+
+        # Prompt user to select the appropriate device index
         try:
-            with sd.InputStream(channels=1, callback=self.audio_callback, samplerate=16000, blocksize=int(0.1 * 16000), device=device_index):
+            computer_audio_device = int(input("Enter the index of the computer audio device (e.g., Stereo Mix): "))
+        except ValueError:
+            print("Invalid input. Please enter a valid device index.")
+            sys.exit(1)
+
+        # Use the identified device index for the computer audio stream
+        try:
+            with sd.InputStream(channels=1, callback=self.audio_callback, samplerate=16000, blocksize=int(0.1 * 16000), device=computer_audio_device, dtype='float32'):  # Use float32 for better compatibility
                 print("Audio stream started successfully.")  # Debug statement
-                while True:
+                while not self.stop_event.is_set():
                     time.sleep(0.1)
         except Exception as e:
             print(f"Error in audio stream: {e}")  # Debug statement
+            self.cleanup()
+            sys.exit(1)
 
     def cleanup(self):
         print("Cleaning up resources...")  # Debug statement
+        self.stop_event.set()  # Set the stop event to terminate the thread gracefully
         if self.interpreter:
             del self.interpreter
+
 
 class OverlayWidget(QtWidgets.QWidget):
     def __init__(self, labels):
@@ -120,7 +148,7 @@ class OverlayWidget(QtWidgets.QWidget):
         # Set up the widget to be frameless and transparent
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        self.setGeometry(500, 500, 600, 150)  # Adjusted position and dimensions for better visibility
+        self.setGeometry(PLACEMENT_RIGHT_OFFSET, PLACEMENT_BOTTOM_OFFSET, TOTAL_WIDTH, TOTAL_HEIGHT)  # Adjusted position and dimensions for better visibility
 
         # Add a background color to help visualize if the widget is appearing
         self.setAutoFillBackground(True)
@@ -133,19 +161,21 @@ class OverlayWidget(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
         # Draw each bar for each class
-        bar_width = 20
-        spacing = 10
+        bar_width = BAR_WIDTH
+        spacing = BAR_SPACING
         for i, confidence in enumerate(self.confidences):
-            opacity = max(0.1, confidence)  # Ensure bars are visible even at low confidences
+            opacity = BAR_OPACITY  # Ensure bars are visible even at low confidences
             painter.setOpacity(opacity)
 
             # Set a color for each class
-            color = QtGui.QColor(100, 200, 255, 255)
+            r, g, b = map(int, BAR_COLOR.split(','))
+            color = QtGui.QColor(r, g, b, 255)
+
             painter.setBrush(color)
             painter.setPen(QtCore.Qt.NoPen)
 
             # Convert the floating confidence to integer for rectangle height
-            rect_height = int(100 * confidence) + 10  # Ensure a minimum height for visibility
+            rect_height = int(TOTAL_HEIGHT * confidence)  # Ensure a minimum height for visibility
             painter.drawRect(i * (bar_width + spacing), 0, bar_width, rect_height)
 
     def update_bars(self, confidences):
@@ -164,7 +194,7 @@ if __name__ == '__main__':
     print("Starting application...")  # Debug statement
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', required=True, help='Path to the YAMNet model file (.tflite)')
-    parser.add_argument('--audio', required=True, help='Path to the audio file or "0" for microphone input')
+    parser.add_argument('--audio', required=True, help='Path to the audio file or "0" for microphone input, or "computer" for computer audio')
     parser.add_argument('--labels', required=True, help='Path to the labels file')
     args = parser.parse_args()
 
@@ -193,6 +223,12 @@ if __name__ == '__main__':
     # Start audio classification
     if args.audio == '0':
         classifier.classify_from_mic()
+    elif args.audio == 'computer':
+        classifier.classify_from_computer_audio()
 
     print("Entering Qt event loop...")  # Debug statement
-    sys.exit(app.exec_())
+    try:
+        sys.exit(app.exec_())
+    except Exception as e:
+        print(f"Error during execution: {e}")
+        classifier.cleanup()
